@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 
+use App\Service\CurlService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,9 +14,10 @@ class Home extends AbstractController
     /**
      * @Route("/", name="homepage")
      * @param Request $request
+     * @param CurlService $curlService
      * @return Response
      */
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, CurlService $curlService)
     {
         $I=0;
         $ls = array();
@@ -23,14 +25,20 @@ class Home extends AbstractController
         try {
             $c = curl_init();
             curl_setopt_array($c, Array(CURLOPT_URL => 'http://www.commitstrip.com/en/feed/',CURLOPT_RETURNTRANSFER => TRUE,));
-            $d = curl_exec($c);curl_close($c);
+            $d = curl_exec($c);
+
+            curl_close($c);
+
             $x = simplexml_load_string($d, 'SimpleXMLElement', LIBXML_NOCDATA);
+
             $c=$x->channel;
             $n= count($x->channel->item);
+
             for($I=1; $I<$n;$I++){
                 $h=$c->item[$I]->link;
-                ;${"ls"}[$I]=(string)$h[0];
+                ${"ls"}[$I]=(string)$h[0];
             }
+
             for($I=1; $I<count($x->channel->item);$I++){
                 if(!!substr_count((string)$c->item[$I]->children("content", true), 'jpg')<0){${"ls"}[$I] = "";}
                 if(!!substr_count((string)$c->item[$I]->children("content", true), 'JPG')<0){${"ls"}[$I] = "";}
@@ -46,7 +54,11 @@ class Home extends AbstractController
         //recpere liens api json avec image
         $j="";
         $h = @fopen("https://newsapi.org/v2/top-headlines?country=us&apiKey=c782db1cd730403f88a544b75dc2d7a0", "r");
-        while ($b = fgets($h, 4096)) {$j.=$b;}
+
+        while ($b = fgets($h, 4096)) {
+            $j.=$b;
+        }
+
         $j=json_decode($j);
         for($II=$I+1; $II<count($j->articles);$II++){
             if($j->articles[$II]->urlToImage=="" || empty($j->articles[$II]->urlToImage) || strlen($j->articles[$II]->urlToImage)==0){continue;}
@@ -66,10 +78,19 @@ class Home extends AbstractController
 
         //recupere dans chaque url l'image
         $j=0;
+
         $images=array();
-        while($j<count($f)){if(isset($f[$j])) {
-            try {$images[] = $this->recupereimagedanspage($f[$j]);} catch (\Exception $e) { /* erreur */ }
-        } $j++;}
+
+        while($j<count($f)){
+
+            if(isset($f[$j])) {
+                try {
+                    $images[] = $this->recupereimagedanspage($f[$j]);
+                } catch (\Exception $e) {
+                    /* erreur */
+                }
+            } $j++;
+        }
 
         return $this->render('default/index.html.twig', array('images' => $images));
     }
